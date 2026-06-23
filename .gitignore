@@ -1,0 +1,108 @@
+## ===== .NET (Lloka.Domain, Application, Infrastructure, Api, Tests) =====
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS / Rider / VS Code
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# Resultados de build/publish
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+publish/
+artifacts/
+
+# Archivos de prueba
+*.trx
+[Tt]est[Rr]esult*/
+TestResults/
+
+# NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+.nuget/
+
+## ===== Secretos y configuración sensible =====
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.*.local.json
+*.pfx
+*.key
+secrets.json
+
+## ===== Frontend (React + Vite) =====
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/*.local
+frontend/coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+## ===== Laravel (notifications-service) =====
+notifications-service/vendor/
+notifications-service/node_modules/
+notifications-service/.env
+notifications-service/.env.*
+!notifications-service/.env.example
+notifications-service/storage/*.key
+notifications-service/storage/app/*
+!notifications-service/storage/app/.gitkeep
+notifications-service/storage/framework/cache/*
+notifications-service/storage/framework/sessions/*
+notifications-service/storage/framework/testing/*
+notifications-service/storage/framework/views/*
+!notifications-service/storage/framework/cache/.gitkeep
+!notifications-service/storage/framework/sessions/.gitkeep
+!notifications-service/storage/framework/testing/.gitkeep
+!notifications-service/storage/framework/views/.gitkeep
+notifications-service/storage/logs/*.log
+notifications-service/bootstrap/cache/*.php
+!notifications-service/bootstrap/cache/.gitkeep
+notifications-service/public/hot
+notifications-service/public/storage
+notifications-service/.phpunit.result.cache
+notifications-service/Homestead.json
+notifications-service/Homestead.yaml
+notifications-service/auth.json
+CLAUDE.md
+.claude/
+
+## ===== Docker =====
+*.env.docker
+docker-compose.override.yml
+
+## ===== Archivos sensibles de KYC (nunca deben commitearse documentos reales) =====
+**/uploads/kyc/*
+!**/uploads/kyc/.gitkeep
+
+## ===== Logs generales =====
+*.log
+logs/
+
+## ===== Sistema operativo =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## ===== Misceláneos =====
+*.tmp
+*.bak
+*.cache
+

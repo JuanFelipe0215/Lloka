@@ -1,0 +1,6 @@
+@Lloka.Api_HostAddress = http://localhost:5047
+
+GET {{Lloka.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

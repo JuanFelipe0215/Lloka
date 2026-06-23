@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Core/">
+    <Project Path="src/Core/Lloka.Application/Lloka.Application.csproj" />
+    <Project Path="src/Core/Lloka.Domain/Lloka.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/Lloka.Infrastructure/Lloka.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Presentation/">
+    <Project Path="src/Presentation/Lloka.Api/Lloka.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lloka.IntegrationTests/Lloka.IntegrationTests.csproj" />
+    <Project Path="tests/Lloka.UnitTests/Lloka.UnitTests.csproj" />
+  </Folder>
+</Solution>
