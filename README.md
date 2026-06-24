@@ -14,37 +14,90 @@ Lloka es un backend para una plataforma de rentas cortas estilo Airbnb. Permite 
 
 ---
 
-## Cómo levantarlo
+## Opción A: Docker Compose (recomendado)
 
 ```bash
 # 1. Clonar el repositorio
 git clone <url-del-repo> && cd Lloka
 
 # 2. (Opcional) Copiar las variables de entorno
-cp .env.example .env   # y editar si quieres cambiar contraseñas
+cp .env.example .env   # editar si quieres cambiar contraseñas o puertos
 
 # 3. Levantar todo con un solo comando
 docker-compose up --build
 ```
 
-Al arrancar, el contenedor de la API aplica automáticamente las migraciones de EF Core contra la base de datos del Compose (controlado por `APPLY_MIGRATIONS_ON_START=true`). No necesitas correr `dotnet ef database update` manualmente.
+Al arrancar, el contenedor de la API aplica automáticamente las migraciones de EF Core (`APPLY_MIGRATIONS_ON_START=true`). No necesitas correr `dotnet ef` manualmente.
 
-### Endpoints disponibles
+### Puertos por defecto
 
-| URL                          | Qué es                                      |
-|------------------------------|---------------------------------------------|
-| `http://localhost:8080/scalar` | Documentación interactiva (Scalar UI)     |
-| `http://localhost:8080/openapi/v1.json` | Documento OpenAPI generado por .NET  |
-| `http://localhost:5432`       | PostgreSQL (usuario: `lloka`, pass: `lloka`)|
+| Servicio | Puerto host | URL                              |
+|----------|-------------|----------------------------------|
+| API      | **8082**    | `http://localhost:8082/scalar`   |
+| DB       | **5435**    | `localhost:5435` (user/pass: `lloka`) |
+
+> **Nota:** Los puertos 8082 y 5435 se eligieron para evitar conflictos con otros
+> contenedores Docker que puedan estar corriendo (8080–8081 y 5432–5434 son comunes).
+> Si alguno ya está ocupado en tu máquina, cambia el mapeo en `docker-compose.yml`
+> (`"8082:8080"` → el puerto externo que prefieras).
 
 ### Flujo de prueba rápida en Scalar
 
-1. `POST /api/auth/register` — crea un usuario (incluye `"isOwner": true` para publicar inmuebles)
-2. `POST /api/auth/login` — obtén el JWT
-3. En Scalar: clic en el candado, pega el token → los endpoints protegidos quedan autorizados
-4. `POST /api/properties` — publica un inmueble
-5. `GET /api/properties` — busca (filtra por `city`, `checkIn`, `checkOut`)
-6. `POST /api/bookings` — crea una reserva
+1. Abre `http://localhost:8082/scalar`
+2. `POST /api/auth/register` — crea un usuario (añade `"isOwner": true` para publicar inmuebles)
+3. `POST /api/auth/login` — obtén el JWT
+4. En Scalar: clic en el candado → pega el token → endpoints protegidos autorizados
+5. `POST /api/properties` — publica un inmueble
+6. `GET /api/properties` — busca (filtra por `city`, `checkIn`, `checkOut`)
+7. `POST /api/bookings` — crea una reserva (requiere KYC aprobado; usa `POST /api/kyc` primero)
+
+---
+
+## Opción B: Sin Docker Compose (alternativa validada)
+
+Útil si Docker Desktop está saturado o los contenedores del Compose no levantan correctamente.
+
+**Prerrequisito:** Tener una instancia de PostgreSQL 16 corriendo (puede ser un contenedor suelto o una instalación local).
+
+### 1. Levantar PostgreSQL suelto
+
+```bash
+docker run -d \
+  --name lloka-postgres \
+  -e POSTGRES_DB=lloka_dev \
+  -e POSTGRES_USER=lloka \
+  -e POSTGRES_PASSWORD=lloka \
+  -p 5434:5432 \
+  -v ./docker/postgres/init-btree-gist.sql:/docker-entrypoint-initdb.d/init-btree-gist.sql:ro \
+  postgres:16-alpine
+```
+
+> Cambia el puerto externo (`5434`) si ya está ocupado.
+
+### 2. Aplicar migraciones
+
+```bash
+# Desde la raíz del repositorio:
+dotnet ef database update \
+  --project src/Infrastructure/Lloka.Infrastructure \
+  --startup-project src/Presentation/Lloka.Api \
+  -- --connectionstrings:defaultconnection "Host=localhost;Port=5434;Database=lloka_dev;Username=lloka;Password=lloka"
+```
+
+Alternativa: configurar la connection string en `appsettings.Development.json` y dejar que la app aplique las migraciones al iniciar (`APPLY_MIGRATIONS_ON_START=true` ya está activo en `Development`).
+
+### 3. Correr la API
+
+```bash
+cd src/Presentation/Lloka.Api
+
+# Apuntar a tu Postgres local:
+dotnet run \
+  --ConnectionStrings:DefaultConnection "Host=localhost;Port=5434;Database=lloka_dev;Username=lloka;Password=lloka"
+```
+
+La API queda disponible en `http://localhost:5000` (HTTP) o `https://localhost:5001` (HTTPS).
+Scalar estará en `http://localhost:5000/scalar`.
 
 ---
 
@@ -91,7 +144,7 @@ Cualquier visitante puede buscar propiedades y agregar favoritos sin registrarse
 
 ### KYC obligatorio antes de la primera reserva
 
-`CreateBookingCommandHandler` verifica si es la primera reserva del usuario. Si lo es, exige `KycStatus == Approved`. El modelo de KYC incluye la entidad `KycVerification`, el método `User.SubmitKycVerification()`, y la interfaz `IGroqKycService` para extracción de datos de cédula vía Llama Vision de Groq. **El cliente real de Groq no está implementado en este MVP** (ver "Estado del proyecto").
+`CreateBookingCommandHandler` verifica si es la primera reserva del usuario. Si lo es, exige `KycStatus == Approved`. El flujo: `POST /api/kyc` llama a `IGroqKycService` (mock en este MVP que simula aprobación automática; diseñado para ser reemplazado por el cliente real de Groq Llama Vision sin cambiar el handler).
 
 ### JWT + BCrypt
 
@@ -111,8 +164,9 @@ Eventos de negocio (`booking.confirmed`, `booking.cancelled`) se escriben en la 
 
 - **Auth:** `POST /api/auth/register`, `POST /api/auth/login` con JWT + BCrypt. Registro soporta `isOwner: true`.
 - **Properties:** `GET /api/properties` (búsqueda paginada por ciudad y fechas, filtra disponibilidad), `GET /api/properties/{id}`, `POST /api/properties` (requiere `isOwner`), `PUT /api/properties/{id}`.
-- **Bookings:** `POST /api/bookings` (crea y confirma en un paso, instant booking, verifica KYC en primera reserva, anti-double-booking doble capa, escribe outbox), `DELETE /api/bookings/{id}` (cancela, escribe outbox).
+- **Bookings:** `POST /api/bookings` (crea y confirma en un paso, verifica KYC en primera reserva, anti-double-booking doble capa, escribe outbox), `DELETE /api/bookings/{id}` (cancela, escribe outbox).
 - **Wishlist:** `GET/POST/DELETE /api/wishlist` — funciona para usuarios autenticados y anónimos (`X-Session-Id`). `MergeAnonymousSessionCommand` disponible para invocar tras login.
+- **KYC:** `POST /api/kyc` — flujo completo implementado con `MockGroqKycService` (aprobación automática en dev). Listo para conectar cliente real de Groq.
 - **Anti-double-booking:** Validado end-to-end con tests de integración reales (Testcontainers + PostgreSQL).
 - **Middleware de excepciones:** Mapeo centralizado `NotFoundException→404`, `ConflictException→409`, `ValidationException→400`, `UnauthorizedException→401`, `DomainException→422`.
 - **Docker Compose:** `docker-compose up --build` levanta API + PostgreSQL con migraciones automáticas.
@@ -122,7 +176,7 @@ Eventos de negocio (`booking.confirmed`, `booking.cancelled`) se escriben en la 
 
 | Feature                     | Estado                                                                 |
 |-----------------------------|------------------------------------------------------------------------|
-| **KYC con Groq Llama Vision** | Interfaz `IGroqKycService` definida, entidades y flujo documentados. Falta el cliente HTTP real a la API de Groq y el command handler final. |
+| **KYC con Groq Llama Vision** | Handler y flujo completos. Falta solo el cliente HTTP real a la API de Groq (`MockGroqKycService` activo en su lugar). |
 | **RabbitMQ + notificaciones** | Outbox pattern implementado (los mensajes se escriben). Falta el `BackgroundService` que los publica y el microservicio Laravel consumidor. |
 | **Frontend React**           | Diseñado en `CLAUDE.md`. No implementado.                             |
 | **Dashboard de rendimiento** | Query diseñada. Handler no implementado.                              |
@@ -135,11 +189,11 @@ El diseño completo de todas estas piezas, incluyendo decisiones técnicas y jus
 ## Cómo correr los tests
 
 ```bash
-# Tests unitarios (sin Docker, rápidos)
+# Tests unitarios (sin Docker, rápidos ~200ms)
 dotnet test tests/Lloka.UnitTests/Lloka.UnitTests.csproj
 
 # Tests de integración (requieren Docker Desktop corriendo)
 dotnet test tests/Lloka.IntegrationTests/Lloka.IntegrationTests.csproj
 ```
 
-Los tests de integración usan **Testcontainers** para levantar una instancia real de PostgreSQL 16 en Docker por cada clase de test, ejecutan la migración, y la destruyen al terminar. No requieren ninguna base de datos local configurada.
+Los tests de integración usan **Testcontainers** para levantar una instancia real de PostgreSQL 16 en Docker por cada clase de test, ejecutan la migración completa (incluido el constraint `EXCLUDE USING gist`), y la destruyen al terminar. No requieren ninguna base de datos local configurada.
