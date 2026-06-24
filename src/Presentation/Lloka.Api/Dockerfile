@@ -1,19 +1,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
+WORKDIR /app
 
-# Copiar archivos de proyecto para restaurar dependencias en capas separadas
-COPY src/Core/Lloka.Domain/Lloka.Domain.csproj                    Core/Lloka.Domain/
-COPY src/Core/Lloka.Application/Lloka.Application.csproj          Core/Lloka.Application/
-COPY src/Infrastructure/Lloka.Infrastructure/Lloka.Infrastructure.csproj  Infrastructure/Lloka.Infrastructure/
-COPY src/Presentation/Lloka.Api/Lloka.Api.csproj                  Presentation/Lloka.Api/
+# Copiar todo src/ de una vez para que MSBuild resuelva las ProjectReferences
+# correctamente sin depender del orden de copia de .csproj individuales.
+COPY src/ src/
 
-RUN dotnet restore Presentation/Lloka.Api/Lloka.Api.csproj
-
-# Copiar todo el código fuente
-COPY src/ .
-
-RUN dotnet publish Presentation/Lloka.Api/Lloka.Api.csproj \
-    -c Release -o /app/publish --no-restore
+RUN dotnet publish src/Presentation/Lloka.Api/Lloka.Api.csproj \
+    -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
