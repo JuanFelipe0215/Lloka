@@ -8,7 +8,7 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<LlokaDbCon
     public LlokaDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<LlokaDbContext>();
-        optionsBuilder.UseNpgsql("Host=localhost;Database=lloka_dev;Username=lloka;Password=lloka");
+        optionsBuilder.UseNpgsql("Host=localhost;Port=5434;Database=lloka_dev;Username=lloka;Password=lloka");
         return new LlokaDbContext(optionsBuilder.Options);
     }
 }

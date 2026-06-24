@@ -39,8 +39,9 @@ builder.Services.AddScoped<IWishlistRepository, WishlistRepository>();
 builder.Services.AddScoped<IRepository<OutboxMessage>, Repository<OutboxMessage>>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-// --- Auth services ---
+// --- Auth + KYC services ---
 builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
+builder.Services.AddScoped<IGroqKycService, MockGroqKycService>();
 builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -68,6 +69,27 @@ builder.Services.AddAuthorization();
 // -----------------------------------------------------------------------
 var app = builder.Build();
 
+// Auto-migrate: útil en Development o cuando la variable de entorno lo indica.
+// Permite que el contenedor Docker quede listo sin correr dotnet ef manualmente.
+var applyMigrations = app.Environment.IsDevelopment()
+    || string.Equals(app.Configuration["APPLY_MIGRATIONS_ON_START"], "true",
+                     StringComparison.OrdinalIgnoreCase);
+
+if (applyMigrations)
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<LlokaDbContext>();
+    try
+    {
+        db.Database.Migrate();
+        app.Logger.LogInformation("Migrations applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Error applying migrations on startup.");
+    }
+}
+
 app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -81,7 +103,9 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

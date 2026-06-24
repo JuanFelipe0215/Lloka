@@ -31,8 +31,7 @@ public sealed record StayPeriod
         Nights = checkOutDate.DayNumber - checkInDate.DayNumber;
     }
 
-    // Para materialización de EF Core desde las columnas timestamptz almacenadas.
-    // Normaliza al offset Colombia (-5) para que la representación sea siempre consistente.
+
     private StayPeriod(DateTimeOffset checkIn, DateTimeOffset checkOut)
     {
         CheckIn  = checkIn.ToOffset(ColombiaTzOffset);

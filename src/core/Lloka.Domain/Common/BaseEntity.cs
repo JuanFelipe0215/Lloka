@@ -12,8 +12,7 @@ public abstract class BaseEntity
         Id = id;
     }
 
-    // EF Core needs a parameterless constructor to materialize entities from the DB.
-    // private protected prevents accidental use from outside the Domain assembly.
+
     private protected BaseEntity() { }
 
     protected void AddDomainEvent(object domainEvent) => _domainEvents.Add(domainEvent);

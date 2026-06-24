@@ -20,9 +20,12 @@ public class RegisterUserCommandHandler(
         var hash = passwordHasher.Hash(request.Password);
         var user = User.Create(request.Email, hash, request.FirstName, request.LastName);
 
+        if (request.IsOwner)
+            user.BecomeOwner();
+
         await userRepo.AddAsync(user, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
-        return new RegisterUserResponse(user.Id, user.Email, user.FullName);
+        return new RegisterUserResponse(user.Id, user.Email, user.FullName, user.IsOwner);
     }
 }
