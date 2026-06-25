@@ -1,3 +1,4 @@
+using Lloka.Application.Bookings.Queries.GetUserBookings;
 using Lloka.Domain.Entities;
 using Lloka.Domain.ValueObjects;
 
@@ -12,4 +13,7 @@ public interface IBookingRepository : IRepository<Booking>
     // Determina si el usuario ya tiene al menos una reserva confirmada.
     // Usado para aplicar la validación KYC solo en la primera reserva.
     Task<bool> HasConfirmedBookingAsync(Guid guestId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<BookingListItemResult>> GetUserBookingsAsync(
+        Guid guestId, CancellationToken ct = default);
 }

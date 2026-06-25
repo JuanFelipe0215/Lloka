@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Lloka.Application.Bookings.Commands.CancelBooking;
 using Lloka.Application.Bookings.Commands.CreateBooking;
+using Lloka.Application.Bookings.Queries.GetUserBookings;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,14 @@ namespace Lloka.Api.Controllers;
 [Authorize]
 public class BookingsController(ISender mediator) : ControllerBase
 {
+    [HttpGet]
+    public async Task<IActionResult> GetUserBookings(CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
+        var result = await mediator.Send(new GetUserBookingsQuery(userId), ct);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateBooking(
         [FromBody] CreateBookingRequest body,

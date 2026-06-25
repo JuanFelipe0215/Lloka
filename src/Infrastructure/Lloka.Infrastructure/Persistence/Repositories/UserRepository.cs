@@ -9,4 +9,9 @@ public class UserRepository(LlokaDbContext context)
 {
     public async Task<User?> GetByEmailAsync(string email, CancellationToken ct = default) =>
         await Context.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+
+    public async Task<User?> GetByIdWithKycAsync(Guid userId, CancellationToken ct = default) =>
+        await Context.Users
+            .Include(u => u.KycVerifications)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
 }
